@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspaces/payment-webhook-hub:cached
+    command: sleep infinity
+    ports:
+      - "3005:3005"
+    networks:
+      - wulfcafe-network
+    environment:
+      - REDIS_HOST=wulfcafe-redis
+      - REDIS_PORT=6379
+      - PORT=3005
+      - LOG_LEVEL=debug
+
+networks:
+  wulfcafe-network:
+    name: wulfcafe_devcontainer_wulfcafe-network
+    external: true
