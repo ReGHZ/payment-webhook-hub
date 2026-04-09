@@ -18,7 +18,7 @@ export const redis = new Redis(redisConfig);
 const defaultJobOptions = {
     attempts: 3,
     backoff: { type: "exponential", delay: 1000 },
-    removeOnComplete: true,
+    removeOnComplete: 100,
     removeOnFail: false,
 }
 
@@ -27,7 +27,12 @@ const defaultJobOptions = {
 export const forwardQueue = new Queue("forward", {
     connection: redis,
     prefix: "webhook-bridge",
-    defaultJobOptions
+    defaultJobOptions: {
+        attempts: 5,
+        backoff: { type: "exponential", delay: 3000 },
+        removeOnComplete: 100,
+        removeOnFail: false,
+    }
 })
 
 // dispatch queue

@@ -1,91 +1,31 @@
-import "dotenv/config"
-import { Worker } from "bullmq"
-import { Redis } from "ioredis"
-import { getTargets } from "./config.js"
-import { redisConfig } from "./queue.js"
+import { dispatcherWorker } from "./dispatcher.js"
+import { forwarderWorker } from "./forwarder.js"
 import logger from "./logger.js"
-import type { Target, WebhookJobData } from "./types.js"
 
-// forwarder
-async function forwardToTarget(
-    target: Target,
-    data: WebhookJobData
-): Promise<void> {
-    const controller = new AbortController()
+logger.info("Workers started")
 
-    const timeout = setTimeout(() => {
-        controller.abort()
-    }, target.timeoutMs ?? 5000)
+async function shutdown(signal: string) {
+    logger.info({ signal }, "Shutting down workers...")
 
-    try {
-        const res = await fetch(target.url, {
-            method: "POST",
-            headers: {
-                "content-type": "application/json",
-                ...target.headers
-            },
-            body: JSON.stringify(data.body),
-            signal: controller.signal
-        })
+    // force shutdown if too long
+    setTimeout(() => {
+        logger.error("Force shutdown after timeout")
+        process.exit(1)
+    }, 10000)
 
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`)
-        }
+    await Promise.all([
+        dispatcherWorker.close(),
+        forwarderWorker.close()
+    ])
 
-        logger.info(
-            { webhookId: data.id, target: target.name },
-            "Forward success"
-        )
-    } catch (err) {
-        logger.error(
-            { webhookId: data.id, target: target.name, err },
-            "Forward failed"
-        )
-
-        throw err // BullMQ retry
-    } finally {
-        clearTimeout(timeout)
-    }
+    logger.info("All workers closed gracefully")
+    process.exit(0)
 }
 
-// Worker
-const worker = new Worker(
-    "xendit-webhook",
-    async (job) => {
-        const data = job.data as WebhookJobData
-
-        logger.info(
-            { webhookId: data.id },
-            "Processing webhook job"
-        )
-
-        const targets = getTargets()
-
-        // parallel execution
-        await Promise.all(
-            targets.map((target) => forwardToTarget(target, data))
-        )
-
-        logger.info(
-            { webhookId: data.id },
-            "All targets processed"
-        )
-    },
-    {
-        connection: new Redis(redisConfig),
-        prefix: "webhook-bridge",
-        concurrency: 10
-    }
-)
-
-// lifecycle logging
-worker.on("completed", (job) => {
-    logger.info({ jobId: job.id }, "Job completed")
+process.on("SIGINT", () => {
+    void shutdown("SIGINT")
 })
 
-worker.on("failed", (job, err) => {
-    logger.error(
-        { jobId: job?.id, err },
-        "Job failed"
-    )
+process.on("SIGTERM", () => {
+    void shutdown("SIGTERM")
 })
