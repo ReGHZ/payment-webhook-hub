@@ -5,7 +5,8 @@
     "dev": "nodemon --watch src --ext ts,js,json --exec \"tsx src/index.ts\"",
     "dev:worker": "nodemon --watch src --ext ts --exec \"tsx src/worker.ts\"",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.13",
@@ -14,7 +15,8 @@
     "dotenv": "^17.4.1",
     "hono": "^4.12.12",
     "ioredis": "^5.10.1",
-    "pino": "^10.3.1"
+    "pino": "^10.3.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,6 +29,7 @@
     "nodemon": "^3.1.14",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "typescript-eslint": "^8.58.1"
+    "typescript-eslint": "^8.58.1",
+    "vitest": "^4.1.4"
   }
 }

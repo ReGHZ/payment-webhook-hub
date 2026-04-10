@@ -1,26 +1,21 @@
-import 'dotenv/config' 
+import 'dotenv/config'
 import { watch } from "chokidar";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import logger from "./logger.js";
+import { TargetsFileSchema } from "./schemas.js";
 import type { Target } from './types.js'
 
 const filePath = process.env.TARGETS_FILE_PATH ?? './targets.json'
 
-// resolve path
 const resolvedPath = path.resolve(filePath)
 
-let currentTargets: Target[] =[]
+let currentTargets: Target[] = []
 
-// load config
 function loadTargets(): void {
   try {
     const raw = readFileSync(resolvedPath, 'utf-8')
-    const parsed = JSON.parse(raw) as { targets?: Target[] }
-
-    if (!parsed.targets || !Array.isArray(parsed.targets)) {
-      throw new Error('Invalid targets format')
-    }
+    const parsed = TargetsFileSchema.parse(JSON.parse(raw) as unknown)
 
     currentTargets = parsed.targets
 
@@ -36,10 +31,9 @@ function loadTargets(): void {
   }
 }
 
-// initial load
 loadTargets()
 
-// watch file changes (hot reload)
+// auto-reload kalau file berubah
 const watcher = watch(resolvedPath, {
   ignoreInitial: true
 })
@@ -49,7 +43,6 @@ watcher.on('change', () => {
   loadTargets()
 })
 
-// public getter (ONLY enabled targets)
 export function getTargets(): Target[] {
   return currentTargets.filter((t) => t.enabled)
 }

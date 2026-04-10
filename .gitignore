@@ -11,6 +11,9 @@
 # deps
 node_modules/
 
+# build
+dist/
+
 # env
 .env
 .env.production
@@ -32,3 +35,6 @@ lerna-debug.log*
 
 # pnpm store
 .pnpm-store
+
+# targets json
+targets.json

@@ -1,21 +1,12 @@
-export interface Target {
-    name: string
-    url: string
-    enabled: boolean
-    prefix: string
-    headers?: Record<string, string>
-    timeoutMs?: number
-}
+import type { z } from "zod"
+import type {
+    TargetSchema,
+    WebhookJobDataSchema,
+    ForwardJobDataSchema,
+    XenditWebhookBodySchema,
+} from "./schemas.js"
 
-export interface WebhookJobData {
-    id: string
-    receivedAt: string
-    headers: Record<string, string>
-    body: unknown
-}
-
-export interface ForwardJobData {
-    webhook: WebhookJobData
-    target: Target
-    dispatchedAt: string
-}
+export type Target = z.infer<typeof TargetSchema>
+export type WebhookJobData = z.infer<typeof WebhookJobDataSchema>
+export type ForwardJobData = z.infer<typeof ForwardJobDataSchema>
+export type XenditWebhookBody = z.infer<typeof XenditWebhookBodySchema>

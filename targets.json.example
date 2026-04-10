@@ -1,0 +1,18 @@
+{
+  "targets": [
+    {
+      "name": "service-a",
+      "url": "https://your-service-a.com/api/callback",
+      "enabled": true,
+      "prefix": "SVC-A-",
+      "headers": { "Authorization": "Bearer your-secret" },
+      "timeoutMs": 10000
+    },
+    {
+      "name": "service-b",
+      "url": "https://your-service-b.com/api/callback",
+      "enabled": true,
+      "prefix": "SVC-B-"
+    }
+  ]
+}

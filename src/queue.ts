@@ -2,7 +2,6 @@ import "dotenv/config";
 import { Redis } from "ioredis";
 import { Queue } from "bullmq";
 
-// config (single source)
 export const redisConfig = {
     host: process.env.REDIS_HOST ?? "127.0.0.1",
     port: Number(process.env.REDIS_PORT ?? 6379),
@@ -10,34 +9,39 @@ export const redisConfig = {
     maxRetriesPerRequest: null,
 };
 
-
-// instance
 export const redis = new Redis(redisConfig);
 
-// Default job option
+// bullmq worker butuh koneksi sendiri (blocking command), jadi bikin factory
+export function createWorkerConnection(name: string): Redis {
+    return new Redis({ ...redisConfig, connectionName: `webhook-hub:${name}` });
+}
+
 const defaultJobOptions = {
     attempts: 3,
-    backoff: { type: "exponential", delay: 1000 },
+    backoff: { type: "exponential" as const, delay: 1000 },
     removeOnComplete: 100,
     removeOnFail: false,
 }
 
-// forward queue
+export const webhookQueue = new Queue("xendit-webhook", {
+    connection: redis,
+    prefix: "webhook-bridge",
+    defaultJobOptions,
+});
 
 export const forwardQueue = new Queue("forward", {
     connection: redis,
     prefix: "webhook-bridge",
     defaultJobOptions: {
         attempts: 5,
-        backoff: { type: "exponential", delay: 3000 },
+        backoff: { type: "exponential" as const, delay: 3000 },
         removeOnComplete: 100,
         removeOnFail: false,
-    }
-})
+    },
+});
 
-// dispatch queue
-export const webhookQueue = new Queue("xendit-webhook", {
+// job yang gagal setelah max retry masuk sini
+export const dlq = new Queue("dead-letter", {
     connection: redis,
     prefix: "webhook-bridge",
-    defaultJobOptions
 });

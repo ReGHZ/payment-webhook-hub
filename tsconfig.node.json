@@ -7,5 +7,5 @@
     "skipLibCheck": true,
     "composite": true
   },
-  "include": ["eslint.config.ts"]
+  "include": ["eslint.config.ts", "vitest.config.ts"]
 }

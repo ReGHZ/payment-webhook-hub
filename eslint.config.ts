@@ -13,7 +13,9 @@ export default defineConfig([
       "dist",
       ".claude",
       "*.config.js",
-      "eslint.config.ts"
+      "eslint.config.ts",
+      "package-lock.json",
+      "pnpm-lock.yaml"
     ]
   },
 
@@ -45,9 +47,22 @@ export default defineConfig([
     files: ["**/*.ts"],
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.json",
+        project: [
+          "./tsconfig.json",
+          "./tsconfig.node.json",
+          "./tsconfig.test.json"
+        ],
         tsconfigRootDir: import.meta.dirname
       }
+    }
+  },
+
+  // Test-specific rules
+  {
+    files: ["**/*.test.ts", "**/*.spec.ts"],
+    rules: {
+      "@typescript-eslint/unbound-method": "off",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off",
     }
   },
 

@@ -7,7 +7,6 @@ logger.info("Workers started")
 async function shutdown(signal: string) {
     logger.info({ signal }, "Shutting down workers...")
 
-    // force shutdown if too long
     setTimeout(() => {
         logger.error("Force shutdown after timeout")
         process.exit(1)

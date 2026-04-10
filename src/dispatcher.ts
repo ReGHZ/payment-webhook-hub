@@ -1,9 +1,9 @@
 import "dotenv/config"
 import { Worker } from "bullmq"
-import { Redis } from "ioredis"
 import { getTargets } from "./config.js"
-import { redisConfig, forwardQueue } from "./queue.js"
+import { createWorkerConnection, forwardQueue } from "./queue.js"
 import logger from "./logger.js"
+import { XenditWebhookBodySchema } from "./schemas.js"
 import type { WebhookJobData, ForwardJobData } from "./types.js"
 
 export const dispatcherWorker = new Worker(
@@ -18,27 +18,21 @@ export const dispatcherWorker = new Worker(
 
         const targets = getTargets()
 
-        const body = data.body
+        const parsed = XenditWebhookBodySchema.safeParse(data.body)
 
-        // type-safe narrowing
-        if (
-            typeof body !== "object" ||
-            body === null ||
-            !("external_id" in body) ||
-            typeof body.external_id !== "string"
-        ) {
+        if (!parsed.success) {
             logger.warn(
-                { webhookId: data.id },
-                "Invalid webhook body: missing external_id"
+                { webhookId: data.id, errors: parsed.error.flatten() },
+                "Invalid webhook body: missing or invalid external_id"
             )
             return
         }
 
-        const externalId = body.external_id
+        const externalId = parsed.data.external_id
 
-        // routing by prefix
+        // sort desc biar prefix paling spesifik menang
         const matchedTarget = targets
-            .sort((a, b) => b.prefix.length - a.prefix.length) // biar prefix paling spesifik menang
+            .sort((a, b) => b.prefix.length - a.prefix.length)
             .find(t => externalId.startsWith(t.prefix))
 
         if (!matchedTarget) {
@@ -63,7 +57,7 @@ export const dispatcherWorker = new Worker(
         )
     },
     {
-        connection: new Redis(redisConfig),
+        connection: createWorkerConnection("dispatcher"),
         prefix: "webhook-bridge",
         concurrency: 10
     }

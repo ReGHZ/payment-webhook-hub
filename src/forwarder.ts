@@ -1,7 +1,6 @@
 import "dotenv/config"
 import { Worker } from "bullmq"
-import { Redis } from "ioredis"
-import { redisConfig } from "./queue.js"
+import { createWorkerConnection, dlq } from "./queue.js"
 import logger from "./logger.js"
 import type { ForwardJobData } from "./types.js"
 
@@ -39,7 +38,7 @@ async function forwardToTarget(data: ForwardJobData): Promise<void> {
             "Forward failed"
         )
 
-        throw err // retry per target
+        throw err // biar bullmq retry
     } finally {
         clearTimeout(timeout)
     }
@@ -53,7 +52,7 @@ export const forwarderWorker = new Worker(
         await forwardToTarget(data)
     },
     {
-        connection: new Redis(redisConfig),
+        connection: createWorkerConnection("forwarder"),
         prefix: "webhook-bridge",
         concurrency: 10
     }
@@ -64,5 +63,21 @@ forwarderWorker.on("completed", (job) => {
 })
 
 forwarderWorker.on("failed", (job, err) => {
-    logger.error({ jobId: job?.id, err }, "Forward job failed")
+    if (!job) return
+
+    const maxAttempts = job.opts.attempts ?? 5
+    if (job.attemptsMade >= maxAttempts) {
+        const data = job.data as ForwardJobData
+        void dlq.add("dead", {
+            ...data,
+            failedReason: err.message,
+            failedAt: new Date().toISOString(),
+        })
+        logger.error(
+            { jobId: job.id, webhookId: data.webhook.id, target: data.target.name },
+            "Job moved to DLQ after max retries"
+        )
+    } else {
+        logger.error({ jobId: job.id, err }, "Forward job failed, will retry")
+    }
 })
