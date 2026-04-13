@@ -1,0 +1,28 @@
+services:
+  webhook-hub-server:
+    build: .
+    container_name: webhook-hub-server
+    ports:
+      - "${PORT:-3005}:3005"
+    env_file: .env
+    volumes:
+      - ./${TARGETS_FILE_PATH:-targets.json}:/app/${TARGETS_FILE_PATH:-targets.json}:ro
+    networks:
+      - wulfcafe-network
+    restart: unless-stopped
+
+  webhook-hub-worker:
+    build: .
+    container_name: webhook-hub-worker
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    volumes:
+      - ./${TARGETS_FILE_PATH:-targets.json}:/app/${TARGETS_FILE_PATH:-targets.json}:ro
+    networks:
+      - wulfcafe-network
+    restart: unless-stopped
+
+networks:
+  wulfcafe-network:
+    name: wulfcafe_wulfcafe-network
+    external: true

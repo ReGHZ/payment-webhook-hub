@@ -4,6 +4,35 @@ import { createWorkerConnection, dlq } from "./queue.js"
 import logger from "./logger.js"
 import type { ForwardJobData } from "./types.js"
 
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
+const ENV_LABEL = (process.env.NODE_ENV ?? "development").toUpperCase()
+
+async function notifyDLQ(data: ForwardJobData, reason: string): Promise<void> {
+    if (DISCORD_WEBHOOK_URL == null || DISCORD_WEBHOOK_URL === "") return
+
+    try {
+        await fetch(DISCORD_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+                embeds: [{
+                    title: `[${ENV_LABEL}] Webhook DLQ Alert`,
+                    color: ENV_LABEL === "PRODUCTION" ? 0xff0000 : 0xffaa00,
+                    fields: [
+                        { name: "Webhook ID", value: data.webhook.id, inline: true },
+                        { name: "Target", value: data.target.name, inline: true },
+                        { name: "Error", value: reason.slice(0, 1024) },
+                        { name: "External ID", value: typeof (data.webhook.body as Record<string, unknown>)?.external_id === "string" ? (data.webhook.body as Record<string, unknown>).external_id as string : "-", inline: true },
+                    ],
+                    timestamp: new Date().toISOString(),
+                }]
+            })
+        })
+    } catch (err) {
+        logger.error({ err }, "Failed to send Discord DLQ alert")
+    }
+}
+
 async function forwardToTarget(data: ForwardJobData): Promise<void> {
     const { webhook, target } = data
 
@@ -73,6 +102,7 @@ forwarderWorker.on("failed", (job, err) => {
             failedReason: err.message,
             failedAt: new Date().toISOString(),
         })
+        void notifyDLQ(data, err.message)
         logger.error(
             { jobId: job.id, webhookId: data.webhook.id, target: data.target.name },
             "Job moved to DLQ after max retries"

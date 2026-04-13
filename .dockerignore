@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.devcontainer
+.claude
+.env
+*.md
+*.test.ts
+*.spec.ts
+vitest.config.ts
+eslint.config.ts
