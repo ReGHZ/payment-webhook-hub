@@ -8,7 +8,7 @@ services:
     volumes:
       - ./${TARGETS_FILE_PATH:-targets.json}:/app/${TARGETS_FILE_PATH:-targets.json}:ro
     networks:
-      - wulfcafe-network
+      - external-network
     restart: unless-stopped
 
   webhook-hub-worker:
@@ -19,10 +19,10 @@ services:
     volumes:
       - ./${TARGETS_FILE_PATH:-targets.json}:/app/${TARGETS_FILE_PATH:-targets.json}:ro
     networks:
-      - wulfcafe-network
+      - external-network
     restart: unless-stopped
 
 networks:
-  wulfcafe-network:
-    name: wulfcafe_wulfcafe-network
+  external-network:
+    name: ${EXTERNAL_NETWORK:-payment-webhook-hub-network}
     external: true
