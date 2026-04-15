@@ -25,6 +25,8 @@ vi.mock("../queue.js", () => ({
     webhookQueue: {
         add: vi.fn().mockResolvedValue(undefined),
     },
+    forwardQueue: {},
+    dlq: {},
     redis: {
         ping: vi.fn().mockResolvedValue("PONG"),
         incr: vi.fn().mockResolvedValue(1),
@@ -39,6 +41,28 @@ vi.mock("../logger.js", () => ({
         warn: vi.fn(),
         error: vi.fn(),
     },
+}))
+
+vi.mock("@bull-board/api", () => ({
+    createBullBoard: vi.fn(),
+}))
+
+vi.mock("@bull-board/api/bullMQAdapter", () => ({
+    BullMQAdapter: vi.fn(),
+}))
+
+vi.mock("@bull-board/hono", async () => {
+    const { Hono } = await import("hono")
+    return {
+        HonoAdapter: class {
+            setBasePath() { return this }
+            registerPlugin() { return new Hono() }
+        }
+    }
+})
+
+vi.mock("@hono/node-server/serve-static", () => ({
+    serveStatic: vi.fn(),
 }))
 
 // Set token sebelum import server supaya signature verification aktif

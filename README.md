@@ -13,14 +13,14 @@ POST /webhook/xendit
        |
   Forwarder (HTTP POST ke target)
        |
-  gagal 5x? --> [dead-letter queue]
+  gagal 5x? --> [dead-letter queue] --> Discord alert
 ```
 
 ## Quick Start
 
 ```bash
 cp .env.example .env
-# isi XENDIT_CALLBACK_TOKEN dan ADMIN_BEARER_TOKEN
+# isi XENDIT_CALLBACK_TOKEN, ADMIN_BEARER_TOKEN, DISCORD_WEBHOOK_URL
 
 npm install
 npm run dev          # server (port 3005)
@@ -29,18 +29,32 @@ npm run dev:worker   # dispatcher + forwarder
 
 Redis harus jalan di `localhost:6379` (atau sesuaikan di `.env`).
 
+## Production (Docker)
+
+```bash
+cp .env.example .env
+# isi semua env yang diperlukan
+
+docker compose up -d --build
+```
+
+Container `webhook-hub-server` dan `webhook-hub-worker` akan join external network dan konek ke Redis yang sudah ada.
+
 ## Environment Variables
 
 | Variable                | Default          | Keterangan                                                       |
 | ----------------------- | ---------------- | ---------------------------------------------------------------- |
+| `NODE_ENV`              | `development`    | Environment label (muncul di Discord alert)                      |
 | `PORT`                  | `3005`           | Port HTTP server                                                 |
 | `REDIS_HOST`            | `127.0.0.1`      | Redis host                                                       |
 | `REDIS_PORT`            | `6379`           | Redis port                                                       |
 | `REDIS_PASSWORD`        | -                | Redis password (opsional)                                        |
 | `XENDIT_CALLBACK_TOKEN` | -                | **Wajib.** Token dari Xendit dashboard, dipakai validasi webhook |
-| `ADMIN_BEARER_TOKEN`    | -                | **Wajib.** Token buat akses admin endpoint                       |
+| `ADMIN_BEARER_TOKEN`    | -                | **Wajib.** Token/password buat akses admin (Bearer & Basic auth) |
+| `ADMIN_USER`            | `admin`          | Username untuk Basic auth di Bull Board                          |
 | `TARGETS_FILE_PATH`     | `./targets.json` | Path ke config target                                            |
 | `LOG_LEVEL`             | `info`           | Pino log level                                                   |
+| `DISCORD_WEBHOOK_URL`   | -                | Discord webhook URL untuk DLQ alert (opsional)                   |
 
 ## Routing
 
@@ -48,7 +62,7 @@ Webhook di-route berdasarkan field `external_id` di body. Misal `external_id: "S
 
 Kalau ada lebih dari satu prefix yang cocok, yang paling panjang (spesifik) menang.
 
-Config target ada di `targets.json` dan auto-reload kalau file berubah:
+Config target ada di `targets.json` dan auto-reload kalau file berubah (tanpa restart):
 
 ```json
 {
@@ -91,9 +105,16 @@ Proteksi:
 - Body size limit 1MB
 - Dedup berdasarkan Xendit event `id` (TTL 24 jam)
 
+### `GET /admin/queues`
+
+Bull Board UI — dashboard visual untuk monitoring semua queue (xendit-webhook, forward, dead-letter). Buka di browser, login pakai Basic auth:
+
+- **Username**: value dari `ADMIN_USER` (default: `admin`)
+- **Password**: value dari `ADMIN_BEARER_TOKEN`
+
 ### `GET /admin/dlq?limit=50`
 
-List job yang gagal setelah max retry. Butuh `Authorization: Bearer <ADMIN_BEARER_TOKEN>`.
+List job yang gagal setelah max retry.
 
 ```bash
 curl -H "Authorization: Bearer your-token" localhost:3005/admin/dlq
@@ -115,6 +136,8 @@ Hapus job dari DLQ.
 curl -X DELETE -H "Authorization: Bearer your-token" localhost:3005/admin/dlq/123
 ```
 
+Admin API endpoint support Bearer token dan Basic auth.
+
 ## Retry & Dead Letter Queue
 
 | Queue                       | Max Retry | Backoff                    |
@@ -122,7 +145,9 @@ curl -X DELETE -H "Authorization: Bearer your-token" localhost:3005/admin/dlq/12
 | `xendit-webhook` (dispatch) | 3x        | Exponential, mulai 1 detik |
 | `forward`                   | 5x        | Exponential, mulai 3 detik |
 
-Job yang gagal forward setelah 5x retry otomatis masuk DLQ. Bisa dilihat dan di-replay lewat admin endpoint.
+Job yang gagal forward setelah 5x retry otomatis masuk DLQ. Bisa dilihat dan di-replay lewat admin endpoint atau Bull Board UI.
+
+Kalau `DISCORD_WEBHOOK_URL` diset, notifikasi otomatis dikirim ke Discord saat job masuk DLQ dengan label environment (`[PRODUCTION]` / `[DEVELOPMENT]`).
 
 ## Testing
 
@@ -136,6 +161,7 @@ npx eslint .    # lint
 
 - **Hono** - web framework
 - **BullMQ** + **Redis** - job queue
+- **Bull Board** - queue monitoring UI
 - **Zod** - runtime validation
-- **Pino** - structured logging
+- **Pino** - structured logging (Promtail/Loki compatible)
 - **Vitest** - testing

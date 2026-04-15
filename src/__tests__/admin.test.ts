@@ -50,6 +50,28 @@ vi.mock("../logger.js", () => ({
     },
 }))
 
+vi.mock("@bull-board/api", () => ({
+    createBullBoard: vi.fn(),
+}))
+
+vi.mock("@bull-board/api/bullMQAdapter", () => ({
+    BullMQAdapter: vi.fn(),
+}))
+
+vi.mock("@bull-board/hono", async () => {
+    const { Hono } = await import("hono")
+    return {
+        HonoAdapter: class {
+            setBasePath() { return this }
+            registerPlugin() { return new Hono() }
+        }
+    }
+})
+
+vi.mock("@hono/node-server/serve-static", () => ({
+    serveStatic: vi.fn(),
+}))
+
 vi.stubEnv("XENDIT_CALLBACK_TOKEN", "test-secret-token")
 vi.stubEnv("ADMIN_BEARER_TOKEN", "test-admin-token")
 

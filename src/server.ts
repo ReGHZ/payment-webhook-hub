@@ -2,6 +2,10 @@ import "dotenv/config";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { randomUUID, timingSafeEqual } from "node:crypto";
+import { createBullBoard } from "@bull-board/api";
+import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
+import { HonoAdapter } from "@bull-board/hono";
+import { serveStatic } from "@hono/node-server/serve-static";
 import logger from "./logger.js";
 import { webhookQueue, forwardQueue, dlq, redis } from "./queue.js";
 import { rateLimiter } from "./middleware/rate-limit.js";
@@ -10,6 +14,7 @@ import { adminAuth } from "./middleware/admin-auth.js";
 const XENDIT_CALLBACK_TOKEN = process.env.XENDIT_CALLBACK_TOKEN ?? "";
 
 const app = new Hono();
+
 
 // Health check
 app.get("/health", async (c) => {
@@ -139,5 +144,19 @@ app.delete("/admin/dlq/:jobId", adminAuth, async (c) => {
   logger.info({ jobId }, "DLQ job removed");
   return c.json({ status: "ok", removed: jobId });
 });
+
+// Bull Board UI
+const serverAdapter = new HonoAdapter(serveStatic);
+serverAdapter.setBasePath("/admin/queues");
+createBullBoard({
+  queues: [
+    new BullMQAdapter(webhookQueue),
+    new BullMQAdapter(forwardQueue),
+    new BullMQAdapter(dlq),
+  ],
+  serverAdapter,
+});
+app.use("/admin/queues/*", adminAuth);
+app.route("/admin/queues", serverAdapter.registerPlugin());
 
 export default app;

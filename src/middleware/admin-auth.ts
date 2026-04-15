@@ -3,6 +3,14 @@ import type { MiddlewareHandler } from "hono"
 import logger from "../logger.js"
 
 const ADMIN_BEARER_TOKEN = process.env.ADMIN_BEARER_TOKEN ?? ""
+const ADMIN_USER = process.env.ADMIN_USER ?? "admin"
+
+function checkToken(token: string): boolean {
+    return (
+        token.length === ADMIN_BEARER_TOKEN.length &&
+        timingSafeEqual(Buffer.from(token), Buffer.from(ADMIN_BEARER_TOKEN))
+    )
+}
 
 export const adminAuth: MiddlewareHandler = async (c, next) => {
     if (ADMIN_BEARER_TOKEN.length === 0) {
@@ -11,22 +19,33 @@ export const adminAuth: MiddlewareHandler = async (c, next) => {
     }
 
     const header = c.req.header("authorization") ?? ""
-    if (!header.startsWith("Bearer ")) {
-        return c.json({ status: "unauthorized" }, 401)
-    }
 
-    const token = header.slice(7)
-
-    if (
-        token.length !== ADMIN_BEARER_TOKEN.length ||
-        !timingSafeEqual(
-            Buffer.from(token),
-            Buffer.from(ADMIN_BEARER_TOKEN)
-        )
-    ) {
+    // Bearer token (API/curl)
+    if (header.startsWith("Bearer ")) {
+        const token = header.slice(7)
+        if (checkToken(token)) {
+            await next()
+            return
+        }
         logger.warn("Invalid admin bearer token")
         return c.json({ status: "forbidden" }, 403)
     }
 
-    await next()
+    // Basic auth (browser)
+    if (header.startsWith("Basic ")) {
+        const decoded = Buffer.from(header.slice(6), "base64").toString()
+        const separator = decoded.indexOf(":")
+        if (separator !== -1) {
+            const user = decoded.slice(0, separator)
+            const pass = decoded.slice(separator + 1)
+            if (user === ADMIN_USER && checkToken(pass)) {
+                await next()
+                return
+            }
+        }
+        logger.warn("Invalid admin basic auth")
+    }
+
+    c.header("WWW-Authenticate", 'Basic realm="Admin"')
+    return c.text("Unauthorized", 401)
 }
