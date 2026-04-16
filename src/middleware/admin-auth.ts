@@ -20,7 +20,7 @@ export const adminAuth: MiddlewareHandler = async (c, next) => {
 
     const header = c.req.header("authorization") ?? ""
 
-    // Bearer token (API/curl)
+    // bearer (API/curl)
     if (header.startsWith("Bearer ")) {
         const token = header.slice(7)
         if (checkToken(token)) {
@@ -31,7 +31,7 @@ export const adminAuth: MiddlewareHandler = async (c, next) => {
         return c.json({ status: "forbidden" }, 403)
     }
 
-    // Basic auth (browser)
+    // basic auth (browser)
     if (header.startsWith("Basic ")) {
         const decoded = Buffer.from(header.slice(6), "base64").toString()
         const separator = decoded.indexOf(":")

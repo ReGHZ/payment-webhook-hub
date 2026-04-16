@@ -1,0 +1,45 @@
+{
+  "providers": [
+    {
+      "name": "xendit",
+      "enabled": true,
+      "routingField": "external_id",
+      "dedupField": "id",
+      "verify": {
+        "method": "header-token",
+        "headerName": "x-callback-token",
+        "envKey": "XENDIT_CALLBACK_TOKEN"
+      }
+    },
+    {
+      "name": "midtrans",
+      "enabled": false,
+      "routingField": "order_id",
+      "dedupField": "transaction_id",
+      "verify": {
+        "method": "hmac-sha512",
+        "headerName": "x-signature",
+        "envKey": "MIDTRANS_SERVER_KEY"
+      }
+    },
+    {
+      "name": "stripe",
+      "enabled": false,
+      "routingField": "data.object.metadata.order_id",
+      "dedupField": "id",
+      "verify": {
+        "method": "stripe-signature",
+        "headerName": "stripe-signature",
+        "envKey": "STRIPE_WEBHOOK_SECRET"
+      }
+    },
+    {
+      "name": "custom",
+      "enabled": false,
+      "routingField": "ref_id",
+      "verify": {
+        "method": "none"
+      }
+    }
+  ]
+}

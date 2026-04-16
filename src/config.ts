@@ -12,7 +12,7 @@ const resolvedPath = path.resolve(filePath)
 
 let currentTargets: Target[] = []
 
-function loadTargets(): void {
+function loadTargets(initial = false): void {
   try {
     const raw = readFileSync(resolvedPath, 'utf-8')
     const parsed = TargetsFileSchema.parse(JSON.parse(raw) as unknown)
@@ -24,6 +24,9 @@ function loadTargets(): void {
       'Targets loaded successfully'
     )
   } catch (err) {
+    if (initial) {
+      throw new Error(`Failed to load targets.json on startup: ${String(err)}`)
+    }
     logger.error(
       { err, path: resolvedPath },
       'Failed to load targets.json, using previous config'
@@ -31,7 +34,7 @@ function loadTargets(): void {
   }
 }
 
-loadTargets()
+loadTargets(true)
 
 // auto-reload kalau file berubah
 const watcher = watch(resolvedPath, {
@@ -45,4 +48,8 @@ watcher.on('change', () => {
 
 export function getTargets(): Target[] {
   return currentTargets.filter((t) => t.enabled)
+}
+
+export async function closeConfigWatcher(): Promise<void> {
+  await watcher.close()
 }

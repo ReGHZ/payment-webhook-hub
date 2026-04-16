@@ -2,10 +2,19 @@ import "dotenv/config"
 import { Worker } from "bullmq"
 import { createWorkerConnection, dlq } from "./queue.js"
 import logger from "./logger.js"
+import { getProvider } from "./providers.js"
+import { getNestedField } from "./utils.js"
 import type { ForwardJobData } from "./types.js"
 
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL
 const ENV_LABEL = (process.env.NODE_ENV ?? "development").toUpperCase()
+
+function extractRoutingId(data: ForwardJobData): string {
+    const provider = getProvider(data.webhook.provider)
+    if (!provider) return "-"
+    const value = getNestedField(data.webhook.body, provider.routingField)
+    return typeof value === "string" ? value : "-"
+}
 
 async function notifyDLQ(data: ForwardJobData, reason: string): Promise<void> {
     if (DISCORD_WEBHOOK_URL == null || DISCORD_WEBHOOK_URL === "") return
@@ -22,7 +31,8 @@ async function notifyDLQ(data: ForwardJobData, reason: string): Promise<void> {
                         { name: "Webhook ID", value: data.webhook.id, inline: true },
                         { name: "Target", value: data.target.name, inline: true },
                         { name: "Error", value: reason.slice(0, 1024) },
-                        { name: "External ID", value: typeof (data.webhook.body as Record<string, unknown>)?.external_id === "string" ? (data.webhook.body as Record<string, unknown>).external_id as string : "-", inline: true },
+                        { name: "Provider", value: data.webhook.provider, inline: true },
+                        { name: "Routing ID", value: extractRoutingId(data), inline: true },
                     ],
                     timestamp: new Date().toISOString(),
                 }]
@@ -97,12 +107,21 @@ forwarderWorker.on("failed", (job, err) => {
     const maxAttempts = job.opts.attempts ?? 5
     if (job.attemptsMade >= maxAttempts) {
         const data = job.data as ForwardJobData
-        void dlq.add("dead", {
-            ...data,
-            failedReason: err.message,
-            failedAt: new Date().toISOString(),
-        })
-        void notifyDLQ(data, err.message)
+        void (async () => {
+            try {
+                await dlq.add("dead", {
+                    ...data,
+                    failedReason: err.message,
+                    failedAt: new Date().toISOString(),
+                })
+                await notifyDLQ(data, err.message)
+            } catch (dlqErr) {
+                logger.error(
+                    { jobId: job.id, dlqErr },
+                    "Failed to add job to DLQ",
+                )
+            }
+        })()
         logger.error(
             { jobId: job.id, webhookId: data.webhook.id, target: data.target.name },
             "Job moved to DLQ after max retries"

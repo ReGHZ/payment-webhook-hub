@@ -1,8 +1,24 @@
 import { z } from "zod"
 
-export const XenditWebhookBodySchema = z.looseObject({
-    id: z.string().optional(),
-    external_id: z.string(),
+// provider verification
+export const ProviderVerifySchema = z.discriminatedUnion("method", [
+    z.object({ method: z.literal("header-token"), headerName: z.string(), envKey: z.string() }),
+    z.object({ method: z.literal("hmac-sha256"), headerName: z.string(), envKey: z.string() }),
+    z.object({ method: z.literal("hmac-sha512"), headerName: z.string(), envKey: z.string() }),
+    z.object({ method: z.literal("stripe-signature"), headerName: z.string(), envKey: z.string() }),
+    z.object({ method: z.literal("none") }),
+])
+
+export const ProviderConfigSchema = z.object({
+    name: z.string(),
+    enabled: z.boolean(),
+    routingField: z.string(),
+    dedupField: z.string().optional(),
+    verify: ProviderVerifySchema,
+})
+
+export const ProvidersFileSchema = z.object({
+    providers: z.array(ProviderConfigSchema),
 })
 
 export const TargetSchema = z.object({
@@ -20,6 +36,7 @@ export const TargetsFileSchema = z.object({
 
 export const WebhookJobDataSchema = z.object({
     id: z.string(),
+    provider: z.string(),
     receivedAt: z.string(),
     headers: z.record(z.string(), z.string()),
     body: z.unknown(),

@@ -36,9 +36,12 @@ vi.mock("../queue.js", () => ({
     },
     redis: {
         ping: vi.fn().mockResolvedValue("PONG"),
-        incr: vi.fn().mockResolvedValue(1),
-        expire: vi.fn().mockResolvedValue(1),
         set: vi.fn().mockResolvedValue("OK"),
+        pipeline: vi.fn().mockReturnValue({
+            incr: vi.fn().mockReturnThis(),
+            expire: vi.fn().mockReturnThis(),
+            exec: vi.fn().mockResolvedValue([[null, 1], [null, 1]]),
+        }),
     },
 }))
 
@@ -180,8 +183,8 @@ describe("POST /admin/dlq/:jobId/replay", () => {
         const mockJob = {
             id: "job-1",
             data: {
-                webhook: { id: "wh-1", body: { amount: 5000 } },
-                target: { name: "cafe", url: "http://localhost" },
+                webhook: { id: "wh-1", provider: "xendit", receivedAt: new Date().toISOString(), headers: {}, body: { amount: 5000 } },
+                target: { name: "cafe", url: "https://example.com/callback", enabled: true, prefix: "CAFE-" },
             },
             remove: vi.fn().mockResolvedValue(undefined),
         }

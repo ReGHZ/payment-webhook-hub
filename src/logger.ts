@@ -2,7 +2,7 @@ import pino from 'pino'
 
 const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
-  // Compatible with Promtail pipeline (Winston-style fields)
+  // format yg compatible sama promtail pipeline
   messageKey: 'message',
   timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
   formatters: {

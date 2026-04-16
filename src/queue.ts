@@ -11,9 +11,23 @@ export const redisConfig = {
 
 export const redis = new Redis(redisConfig);
 
-// bullmq worker butuh koneksi sendiri (blocking command), jadi bikin factory
+// worker butuh koneksi redis sendiri (blocking command)
+const workerConnections: Redis[] = [];
+
 export function createWorkerConnection(name: string): Redis {
-    return new Redis({ ...redisConfig, connectionName: `webhook-hub:${name}` });
+    const conn = new Redis({ ...redisConfig, connectionName: `webhook-hub:${name}` });
+    workerConnections.push(conn);
+    return conn;
+}
+
+export async function closeAll(): Promise<void> {
+    await Promise.all([
+        webhookQueue.close(),
+        forwardQueue.close(),
+        dlq.close(),
+        ...workerConnections.map((c) => c.quit()),
+    ]);
+    await redis.quit();
 }
 
 const defaultJobOptions = {
@@ -23,7 +37,7 @@ const defaultJobOptions = {
     removeOnFail: false,
 }
 
-export const webhookQueue = new Queue("xendit-webhook", {
+export const webhookQueue = new Queue("webhook-incoming", {
     connection: redis,
     prefix: "webhook-bridge",
     defaultJobOptions,

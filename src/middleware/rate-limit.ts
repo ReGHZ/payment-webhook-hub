@@ -13,15 +13,23 @@ export const rateLimiter: MiddlewareHandler = async (c, next) => {
 
     const key = `ratelimit:${ip}`
 
-    const current = await redis.incr(key)
+    try {
+        // atomic incr + expire
+        const results = await redis
+            .pipeline()
+            .incr(key)
+            .expire(key, WINDOW_SECONDS)
+            .exec()
 
-    if (current === 1) {
-        await redis.expire(key, WINDOW_SECONDS)
-    }
+        const current = results?.[0]?.[1] as number ?? 0
 
-    if (current > MAX_REQUESTS) {
-        logger.warn({ ip, current }, "Rate limit exceeded")
-        return c.json({ status: "too many requests" }, 429)
+        if (current > MAX_REQUESTS) {
+            logger.warn({ ip, current }, "Rate limit exceeded")
+            return c.json({ status: "too many requests" }, 429)
+        }
+    } catch (err) {
+        // redis down skip, jangan block webhook
+        logger.error({ err }, "Rate limiter redis error, skipping")
     }
 
     await next()
