@@ -24,7 +24,9 @@ POST /webhook/:provider
 
 ```bash
 cp .env.example .env
-cp providers.json.example providers.json
+mkdir -p config
+cp providers.json.example config/providers.json
+cp targets.json.example config/targets.json
 # isi token dan config sesuai kebutuhan
 
 npm install
@@ -97,8 +99,8 @@ Secret token disimpan di `.env`, config hanya reference nama env var via `envKey
 | `XENDIT_CALLBACK_TOKEN` | -                  | Token Xendit (referenced dari providers.json)               |
 | `ADMIN_BEARER_TOKEN`    | -                  | **Wajib.** Token/password untuk admin (Bearer & Basic auth) |
 | `ADMIN_USER`            | `admin`            | Username untuk Basic auth di Bull Board                     |
-| `TARGETS_FILE_PATH`     | `./targets.json`   | Path ke config target                                       |
-| `PROVIDERS_FILE_PATH`   | `./providers.json` | Path ke config provider                                     |
+| `TARGETS_FILE_PATH`     | `./config/targets.json`   | Path ke config target                                |
+| `PROVIDERS_FILE_PATH`   | `./config/providers.json` | Path ke config provider                              |
 | `LOG_LEVEL`             | `info`             | Pino log level                                              |
 | `DISCORD_WEBHOOK_URL`   | -                  | Discord webhook URL untuk DLQ alert (opsional)              |
 
@@ -108,7 +110,7 @@ Webhook di-route berdasarkan `routingField` yang dikonfigurasi per provider. Mis
 
 Kalau ada lebih dari satu prefix yang cocok, yang paling panjang (spesifik) menang.
 
-Config target ada di `targets.json` dan auto-reload kalau file berubah (tanpa restart):
+Config target ada di `config/targets.json` dan auto-reload kalau file berubah (tanpa restart):
 
 ```json
 {

@@ -9,3 +9,4 @@ dist
 *.spec.ts
 vitest.config.ts
 eslint.config.ts
+config

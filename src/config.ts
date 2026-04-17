@@ -6,7 +6,7 @@ import logger from "./logger.js";
 import { TargetsFileSchema } from "./schemas.js";
 import type { Target } from './types.js'
 
-const filePath = process.env.TARGETS_FILE_PATH ?? './targets.json'
+const filePath = process.env.TARGETS_FILE_PATH ?? './config/targets.json'
 
 const resolvedPath = path.resolve(filePath)
 
@@ -36,9 +36,13 @@ function loadTargets(initial = false): void {
 
 loadTargets(true)
 
-// auto-reload kalau file berubah
+// auto-reload kalau file berubah; awaitWriteFinish cegah baca partial-write
 const watcher = watch(resolvedPath, {
-  ignoreInitial: true
+  ignoreInitial: true,
+  awaitWriteFinish: {
+    stabilityThreshold: 200,
+    pollInterval: 50
+  }
 })
 
 watcher.on('change', () => {

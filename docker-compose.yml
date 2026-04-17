@@ -2,12 +2,15 @@ services:
   webhook-hub-server:
     build: .
     container_name: webhook-hub-server
+    # Run sebagai UID host supaya file di config/ hasil admin UI save
+    # tetap bisa di-edit manual tanpa sudo. Override via PUID/PGID di .env
+    # kalau UID host bukan 1000.
+    user: "${PUID:-1000}:${PGID:-1000}"
     ports:
       - "${PORT:-3005}:3005"
     env_file: .env
     volumes:
-      - ./${TARGETS_FILE_PATH:-targets.json}:/app/${TARGETS_FILE_PATH:-targets.json}:ro
-      - ./${PROVIDERS_FILE_PATH:-providers.json}:/app/${PROVIDERS_FILE_PATH:-providers.json}:ro
+      - ./config:/app/config
     networks:
       - external-network
     restart: unless-stopped
@@ -15,11 +18,11 @@ services:
   webhook-hub-worker:
     build: .
     container_name: webhook-hub-worker
+    user: "${PUID:-1000}:${PGID:-1000}"
     command: ["node", "dist/worker.js"]
     env_file: .env
     volumes:
-      - ./${TARGETS_FILE_PATH:-targets.json}:/app/${TARGETS_FILE_PATH:-targets.json}:ro
-      - ./${PROVIDERS_FILE_PATH:-providers.json}:/app/${PROVIDERS_FILE_PATH:-providers.json}:ro
+      - ./config:/app/config
     networks:
       - external-network
     restart: unless-stopped

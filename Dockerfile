@@ -21,8 +21,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
-COPY targets.json.example ./targets.json
-COPY providers.json.example ./providers.json
+COPY targets.json.example /app/config/targets.json
+COPY providers.json.example /app/config/providers.json
 
 EXPOSE 3005
 

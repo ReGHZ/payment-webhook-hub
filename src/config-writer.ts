@@ -3,8 +3,8 @@ import path from "node:path"
 import { TargetsFileSchema, ProvidersFileSchema } from "./schemas.js"
 import type { Target, ProviderConfig } from "./types.js"
 
-const targetsPath = path.resolve(process.env.TARGETS_FILE_PATH ?? "./targets.json")
-const providersPath = path.resolve(process.env.PROVIDERS_FILE_PATH ?? "./providers.json")
+const targetsPath = path.resolve(process.env.TARGETS_FILE_PATH ?? "./config/targets.json")
+const providersPath = path.resolve(process.env.PROVIDERS_FILE_PATH ?? "./config/providers.json")
 
 // tulis ke .tmp dulu, baru rename — rename atomic di same filesystem
 async function writeAtomic(filePath: string, content: string): Promise<void> {
