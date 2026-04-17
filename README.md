@@ -136,11 +136,13 @@ Config target ada di `targets.json` dan auto-reload kalau file berubah (tanpa re
 
 ## API Endpoints
 
-### `GET /health`
+### Public
+
+#### `GET /health`
 
 Health check. Return 503 kalau Redis mati.
 
-### `POST /webhook/:provider`
+#### `POST /webhook/:provider`
 
 Terima webhook dari provider yang terdaftar di `providers.json`. Verifikasi otomatis sesuai config provider.
 
@@ -150,30 +152,39 @@ Proteksi:
 - Body size limit 1MB
 - Dedup berdasarkan `dedupField` provider (TTL 24 jam)
 
-### `GET /admin/queues`
+### Admin UI (browser)
 
-Bull Board UI — dashboard visual untuk monitoring semua queue. Login pakai Basic auth:
-
+Login Basic auth:
 - **Username**: value dari `ADMIN_USER` (default: `admin`)
 - **Password**: value dari `ADMIN_BEARER_TOKEN`
 
-### `GET /admin/dlq?limit=50`
+#### `GET /admin/config`
+
+UI buat manage `providers.json` dan `targets.json` tanpa SSH ke VPS. Add/edit/delete provider & target, perubahan auto-reload (chokidar watcher). Field `envKey` di provider cuma edit nama env var — secret/token tetap di `.env` dan ga pernah di-expose lewat UI.
+
+#### `GET /admin/queues`
+
+Bull Board — dashboard visual untuk monitoring semua queue (incoming, forward, dead-letter). Bisa retry, delete, atau clean job langsung dari sini. Akses DLQ via `/admin/queues/queue/dead-letter`.
+
+### Admin REST API (automation)
+
+Buat script/monitoring tool. Support Bearer token dan Basic auth (pakai `ADMIN_BEARER_TOKEN`).
+
+#### `GET /admin/dlq?limit=50`
 
 List job yang gagal setelah max retry.
 
 ```bash
-curl -H "Authorization: Bearer your-token" localhost:3005/admin/dlq
+curl -H "Authorization: Bearer $TOKEN" localhost:3005/admin/dlq
 ```
 
-### `POST /admin/dlq/:jobId/replay`
+#### `POST /admin/dlq/:jobId/replay`
 
 Kirim ulang job dari DLQ ke forward queue.
 
-### `DELETE /admin/dlq/:jobId`
+#### `DELETE /admin/dlq/:jobId`
 
 Hapus job dari DLQ.
-
-Admin API endpoint support Bearer token dan Basic auth.
 
 ## Retry & Dead Letter Queue
 

@@ -49,6 +49,10 @@ export function getProviders(): ProviderConfig[] {
     return currentProviders.filter((p) => p.enabled)
 }
 
+export function getAllProviders(): ProviderConfig[] {
+    return currentProviders
+}
+
 export async function closeProviderWatcher(): Promise<void> {
     await watcher.close()
 }

@@ -50,6 +50,10 @@ export function getTargets(): Target[] {
   return currentTargets.filter((t) => t.enabled)
 }
 
+export function getAllTargets(): Target[] {
+  return currentTargets
+}
+
 export async function closeConfigWatcher(): Promise<void> {
   await watcher.close()
 }
