@@ -23,6 +23,8 @@ services:
     networks:
       - external-network
     restart: unless-stopped
+    healthcheck:
+      disable: true
 
 networks:
   external-network:
